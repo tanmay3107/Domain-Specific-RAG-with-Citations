@@ -24,7 +24,7 @@ Settings.embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/al
 
 # B. Set LLM (Google Gemini - Free Tier) - UPDATED CODE
 Settings.llm = GoogleGenAI(
-    model="gemini-1.5-flash-001",
+    model="models/gemini-pro",
     api_key=os.getenv("GOOGLE_API_KEY")
 )
 
