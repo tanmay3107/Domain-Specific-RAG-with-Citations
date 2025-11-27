@@ -5,7 +5,7 @@ from pinecone import Pinecone, ServerlessSpec
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext, Settings
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.llms.gemini import Gemini
+from llama_index.llms.google_genai import GoogleGenAI # <--- UPDATED IMPORT
 
 # 1. SETUP & CONFIGURATION
 load_dotenv()
@@ -20,11 +20,13 @@ if not os.getenv("GOOGLE_API_KEY"):
 print("Setting up Free Local Embeddings & Gemini LLM...")
 
 # A. Set Embed Model (Runs on your CPU/GPU - Free)
-# "all-MiniLM-L6-v2" is standard, fast, and uses 384 dimensions
 Settings.embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-# B. Set LLM (Google Gemini - Free Tier)
-Settings.llm = Gemini(api_key=os.getenv("GOOGLE_API_KEY"), model="models/gemini-1.5-flash")
+# B. Set LLM (Google Gemini - Free Tier) - UPDATED CODE
+Settings.llm = GoogleGenAI(
+    model="models/gemini-1.5-flash",
+    api_key=os.getenv("GOOGLE_API_KEY")
+)
 
 # 2. PINECONE INDEX MANAGEMENT
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
@@ -34,24 +36,24 @@ index_name = "medical-bot-index"
 existing_indexes = [i["name"] for i in pc.list_indexes()]
 
 if index_name in existing_indexes:
-    # We must check if the old index uses 1536 (OpenAI size). If so, delete it.
+    # Check dimensions (Local embeddings use 384, not 1536)
     index_info = pc.describe_index(index_name)
     if index_info.dimension != 384:
         print(f"⚠️  Old index has wrong dimensions ({index_info.dimension}). Deleting to recreate with 384...")
         pc.delete_index(index_name)
-        time.sleep(5) # Wait for deletion
+        time.sleep(5) 
         existing_indexes.remove(index_name)
 
 # Create Index if it doesn't exist
 if index_name not in existing_indexes:
-    print(f"Creating new index '{index_name}' with dimension 384 (HuggingFace)...")
+    print(f"Creating new index '{index_name}' with dimension 384...")
     pc.create_index(
         name=index_name,
-        dimension=384, # Correct size for all-MiniLM-L6-v2
+        dimension=384, 
         metric="cosine",
         spec=ServerlessSpec(cloud="aws", region="us-east-1")
     )
-    time.sleep(10) # Wait for initialization
+    time.sleep(10) 
 
 # Connect
 pinecone_index = pc.Index(index_name)
@@ -67,7 +69,7 @@ if not documents:
 
 storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-print("Generations embeddings (Locally)...")
+print("Generating embeddings (Locally)...")
 index = VectorStoreIndex.from_documents(documents, storage_context=storage_context)
 
 # 4. QUERY
@@ -85,5 +87,4 @@ def ask_bot(question):
         print(f"Source: {doc} (Page {page})")
 
 if __name__ == "__main__":
-    # Test with a question likely to be in your PDF
     ask_bot("What are the precautions for Paracetamol?")
