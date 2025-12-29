@@ -20,28 +20,21 @@ pinecone_index = pc.Index("medical-knowledge-base")
 vector_store = PineconeVectorStore(pinecone_index=pinecone_index)
 index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
 
-# 3. CREATE THE AGENT (The Stable Way)
-print("Initializing Agent...")
+# 3. CREATE THE CHATBOT (CLEAN VERSION)
+print("Initializing Medical AI...")
 
-try:
-    # "chat_mode='react'" forces it to behave like an Agent that uses tools.
-    # It treats the Vector Store Index as a lookup tool automatically.
-    agent = index.as_chat_engine(
-        chat_mode="react", 
-        verbose=True
-    )
-    print("✅ Agent initialized successfully (ReAct Mode)!")
+# We use "best" mode. This automatically picks the smartest engine available
+# on your machine (Context + Retrieval + Memory) without crashing.
+agent = index.as_chat_engine(
+    chat_mode="best", 
+    verbose=True
+)
 
-except Exception as e:
-    print(f"⚠️ ReAct mode failed: {e}")
-    print("Falling back to standard Context Chat...")
-    # Fallback: Standard RAG Chat (Still smart, just less 'agentic' internals)
-    agent = index.as_chat_engine(chat_mode="context", verbose=True)
+print("✅ Medical AI Initialized Successfully!")
 
-# 5. CHAT LOOP
+# 4. CHAT LOOP
 print("\n🤖 MEDICAL AGENT READY (Type 'q' to quit)")
-print("Try asking: 'What is the dosage for Paracetamol?' (Watch it use the tool!)")
-print("Try asking: 'Hello there' (Watch it NOT use the tool)")
+print("Try asking: 'What is the dosage for Paracetamol?'")
 print("-" * 50)
 
 while True:
