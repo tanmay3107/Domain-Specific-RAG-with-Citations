@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 from llama_index.core import VectorStoreIndex, Settings
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.core.agent import ReActAgent
-# SWITCHING BACK TO THE WORKING CLASS
 from llama_index.llms.gemini import Gemini 
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pinecone import Pinecone
@@ -12,20 +11,19 @@ from llama_index.vector_stores.pinecone import PineconeVectorStore
 # 1. SETUP
 load_dotenv()
 
-# Configure the LLM (Using the class that worked for you before)
-# This handles the "models/" prefix automatically
-Settings.llm = Gemini(model="models/gemini-1.5-flash", api_key=os.getenv("GOOGLE_API_KEY"))
+# --- FIX: USE SPECIFIC MODEL VERSION ---
+Settings.llm = Gemini(model="models/gemini-2.5-flash", api_key=os.getenv("GOOGLE_API_KEY"))
+
+# Use Local Embeddings (Free)
 Settings.embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 # 2. CONNECT TO EXISTING PINECONE INDEX
-# (We assume you already ran main.py so the data is already there!)
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 pinecone_index = pc.Index("medical-knowledge-base")
 vector_store = PineconeVectorStore(pinecone_index=pinecone_index)
 index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
 
 # 3. CREATE THE TOOL
-# This is the "Magic Step". We wrap the query engine as a tool.
 medical_tool = QueryEngineTool(
     query_engine=index.as_query_engine(similarity_top_k=3),
     metadata=ToolMetadata(
@@ -34,10 +32,21 @@ medical_tool = QueryEngineTool(
     ),
 )
 
-# 4. CREATE THE AGENT
-# The agent can chat normally ("Hi!"), OR use the tool if needed.
+# 4. CREATE THE AGENT (FIXED INITIALIZATION)
 print("Initializing Agent...")
-agent = ReActAgent.from_tools([medical_tool], verbose=True)
+
+# Try the standard method first. If your version is very new, it might use .from_tools
+try:
+    # Attempt 1: Standard ReActAgent (Newer versions)
+    agent = ReActAgent.from_tools([medical_tool], llm=Settings.llm, verbose=True)
+except AttributeError:
+    print("⚠️ 'from_tools' not found. Trying legacy initialization...")
+    # Attempt 2: Direct Initialization (Older versions fallback)
+    from llama_index.core.agent import AgentRunner
+    from llama_index.core.agent import ReActAgentWorker
+    
+    step_engine = ReActAgentWorker.from_tools([medical_tool], llm=Settings.llm, verbose=True)
+    agent = AgentRunner(step_engine)
 
 # 5. CHAT LOOP
 print("\n🤖 MEDICAL AGENT READY (Type 'q' to quit)")
