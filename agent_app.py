@@ -1,8 +1,7 @@
 import os
+import sys
 from dotenv import load_dotenv
 from llama_index.core import VectorStoreIndex, Settings
-from llama_index.core.tools import QueryEngineTool, ToolMetadata
-from llama_index.core.agent import ReActAgent
 from llama_index.llms.gemini import Gemini 
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pinecone import Pinecone
@@ -11,10 +10,8 @@ from llama_index.vector_stores.pinecone import PineconeVectorStore
 # 1. SETUP
 load_dotenv()
 
-# --- FIX: USE SPECIFIC MODEL VERSION ---
+# --- USE SPECIFIC MODEL VERSION ---
 Settings.llm = Gemini(model="models/gemini-2.5-flash", api_key=os.getenv("GOOGLE_API_KEY"))
-
-# Use Local Embeddings (Free)
 Settings.embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 # 2. CONNECT TO EXISTING PINECONE INDEX
@@ -23,30 +20,23 @@ pinecone_index = pc.Index("medical-knowledge-base")
 vector_store = PineconeVectorStore(pinecone_index=pinecone_index)
 index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
 
-# 3. CREATE THE TOOL
-medical_tool = QueryEngineTool(
-    query_engine=index.as_query_engine(similarity_top_k=3),
-    metadata=ToolMetadata(
-        name="medical_guidelines",
-        description="Useful for answering specific questions about Paracetamol, Tuberculosis, and medical dosages. Always check this for clinical facts."
-    ),
-)
-
-# 4. CREATE THE AGENT (FIXED INITIALIZATION)
+# 3. CREATE THE AGENT (The Stable Way)
 print("Initializing Agent...")
 
-# Try the standard method first. If your version is very new, it might use .from_tools
 try:
-    # Attempt 1: Standard ReActAgent (Newer versions)
-    agent = ReActAgent.from_tools([medical_tool], llm=Settings.llm, verbose=True)
-except AttributeError:
-    print("⚠️ 'from_tools' not found. Trying legacy initialization...")
-    # Attempt 2: Direct Initialization (Older versions fallback)
-    from llama_index.core.agent import AgentRunner
-    from llama_index.core.agent import ReActAgentWorker
-    
-    step_engine = ReActAgentWorker.from_tools([medical_tool], llm=Settings.llm, verbose=True)
-    agent = AgentRunner(step_engine)
+    # "chat_mode='react'" forces it to behave like an Agent that uses tools.
+    # It treats the Vector Store Index as a lookup tool automatically.
+    agent = index.as_chat_engine(
+        chat_mode="react", 
+        verbose=True
+    )
+    print("✅ Agent initialized successfully (ReAct Mode)!")
+
+except Exception as e:
+    print(f"⚠️ ReAct mode failed: {e}")
+    print("Falling back to standard Context Chat...")
+    # Fallback: Standard RAG Chat (Still smart, just less 'agentic' internals)
+    agent = index.as_chat_engine(chat_mode="context", verbose=True)
 
 # 5. CHAT LOOP
 print("\n🤖 MEDICAL AGENT READY (Type 'q' to quit)")
