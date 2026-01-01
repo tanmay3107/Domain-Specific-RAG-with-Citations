@@ -1,26 +1,30 @@
-DocuQA: Domain-Specific RAG System with Citations
-Overview
-DocuQA is an advanced AI Knowledge Assistant designed to answer questions based strictly on a curated set of internal documents (PDFs), eliminating the "hallucinations" common in standard LLMs.
+Agentic AI: Multi-Agent RAG with Tool Calling
 
-Unlike generic chatbots, this system implements Retrieval-Augmented Generation (RAG) to index specialized data (e.g., Medical Guidelines, Legal Codes) and provides precise page-level citations for every answer, ensuring trust and verifiability.
+Overview
+
+This project implements an Agentic RAG (Retrieval-Augmented Generation) system designed to answer complex domain-specific questions. Unlike standard RAG chatbots that strictly retrieve data, this system uses an Agentic Workflow where the LLM reasons about the user's query and dynamically decides when to use external tools.
+
+It features a Reasoning Loop that utilizes a Vector Database (Pinecone) as a "Knowledge Tool," allowing the agent to fetch clinical guidelines only when necessary and cross-reference answers with citations.
 
 ✨ Key Features
-Zero-Cost Tech Stack: Optimized to run using Free Tier architecture (Google Gemini + HuggingFace Local Embeddings).
 
-Multi-Document Intelligence: capable of synthesizing answers across multiple large PDFs (tested on 300+ page medical journals).
+Agentic Workflow: Built using LlamaIndex agents that break down queries and execute multi-step reasoning.
 
-Evidence-Based Answers: The "Citations Engine" lists the exact filename and page number for every claim made by the AI.
+Tool Calling Capability: The system wraps the Vector Store as a QueryEngineTool, enabling the LLM to "call" the database like an API function.
 
-Vector Search: Utilizes high-dimensional semantic search (via Pinecone) to find relevant context even if keywords don't match exactly.
+Citation & Grounding: The agent provides exact page-level citations from PDF documents, reducing hallucinations.
+
+Vector Search: Uses Pinecone for high-precision semantic retrieval of medical context.
 
 🛠️ Tech Stack
-Orchestration: LlamaIndex (RAG Framework)
 
-LLM: Google Gemini 1.5 Flash (Generation)
+Orchestration: LlamaIndex (ReAct Agent)
 
-Embeddings: HuggingFace all-MiniLM-L6-v2 (Local, 384-dimensional)
+LLM: Google Gemini 1.5 Flash
 
-Vector Database: Pinecone (Serverless Indexing)
+Vector DB: Pinecone (Serverless)
+
+Embeddings: HuggingFace all-MiniLM-L6-v2 (Local)
 
 Language: Python 3.10+
 
